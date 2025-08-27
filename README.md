@@ -6,7 +6,7 @@
 
 - Maven
 
-- MySQL Database
+- MySQL Databases
 
 - Git
 
