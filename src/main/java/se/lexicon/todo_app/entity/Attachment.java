@@ -1,46 +1,39 @@
 package se.lexicon.todo_app.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.*;
 
 @Entity
 @Table(name = "attachments")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-
-@ToString(exclude = "todo")
-@EqualsAndHashCode(exclude = "todo")
 public class Attachment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String fileName;
-    private String fileType;
+    private String filename;
 
-    @Lob
-    private byte[] data; // Store the file content
+    private String filePath;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "todo_id")
     private Todo todo;
 
-    public Attachment(String fileName, String fileType, byte[] data) {
-        this.fileName = fileName;
-        this.fileType = fileType;
-        this.data = data;
+    public Attachment() {}
+
+    public Attachment(String filename, String filePath) {
+        this.filename = filename;
+        this.filePath = filePath;
     }
 
-    public void setTodo(Todo todo) {
-        this.todo = todo;
+    // Getters & Setters
+    public Long getId() { return id; }
 
-        // Sync the other side if not already present
-        if (todo != null) {
-            todo.getAttachments().add(this);
-        }
-    }
+    public String getFilename() { return filename; }
+    public void setFilename(String filename) { this.filename = filename; }
 
+    public String getFilePath() { return filePath; }
+    public void setFilePath(String filePath) { this.filePath = filePath; }
+
+    public Todo getTodo() { return todo; }
+    public void setTodo(Todo todo) { this.todo = todo; }
 }
