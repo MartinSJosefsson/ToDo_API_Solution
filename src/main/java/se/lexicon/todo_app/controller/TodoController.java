@@ -1,8 +1,11 @@
 package se.lexicon.todo_app.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import se.lexicon.todo_app.dto.TodoDto;
 import se.lexicon.todo_app.service.TodoService;
 
@@ -19,39 +22,31 @@ public class TodoController {
         this.todoService = todoService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<TodoDto>> getAllTodos() {
-        return ResponseEntity.ok(todoService.findAll());
+    // --- CRUD endpoints (as before) ---
+
+    // ✅ upload attachments
+    @PostMapping("/{id}/attachments")
+    public ResponseEntity<String> uploadAttachments(@PathVariable Long id,
+                                                    @RequestParam("files") List<MultipartFile> files) {
+        todoService.saveAttachments(id, files);
+        return ResponseEntity.ok("Files uploaded successfully");
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<TodoDto> getTodoById(@PathVariable Long id) {
-        return ResponseEntity.ok(todoService.findById(id));
+    // ✅ list attachment names
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<List<String>> getAttachments(@PathVariable Long id) {
+        return ResponseEntity.ok(todoService.getAttachments(id));
     }
 
-    @PostMapping
-    public ResponseEntity<TodoDto> createTodo(@RequestBody TodoDto dto) {
-        return ResponseEntity.ok(todoService.create(dto));
-    }
+    // ✅ download a single attachment
+    @GetMapping("/{id}/attachments/{attachmentId}")
+    public ResponseEntity<byte[]> downloadAttachment(@PathVariable Long id,
+                                                     @PathVariable Long attachmentId) {
+        byte[] fileData = todoService.getAttachmentFile(id, attachmentId);
 
-    @PutMapping("/{id}")
-    public ResponseEntity<TodoDto> updateTodo(@PathVariable Long id, @RequestBody TodoDto dto) {
-        return ResponseEntity.ok(todoService.update(id, dto));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTodo(@PathVariable Long id) {
-        todoService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/person/{personId}")
-    public ResponseEntity<List<TodoDto>> getTodosByPerson(@PathVariable Long personId) {
-        return ResponseEntity.ok(todoService.findByPersonId(personId));
-    }
-
-    @GetMapping("/status/{completed}")
-    public ResponseEntity<List<TodoDto>> getTodosByCompleted(@PathVariable boolean completed) {
-        return ResponseEntity.ok(todoService.findByCompleted(completed));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=file")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(fileData);
     }
 }

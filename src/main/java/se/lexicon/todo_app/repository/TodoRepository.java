@@ -1,8 +1,8 @@
 package se.lexicon.todo_app.repository;
 
-import se.lexicon.todo_app.entity.Todo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import se.lexicon.todo_app.entity.Todo;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -10,25 +10,26 @@ import java.util.List;
 @Repository
 public interface TodoRepository extends JpaRepository<Todo, Long> {
 
-    List<Todo> findByCompleted(boolean completed);
+    // ✅ used in tests
+    List<Todo> findByTitleContainingIgnoreCase(String title);
 
-    // ✅ tests may use both
+    // ✅ person lookups
     List<Todo> findByPerson_Id(Long personId);
     List<Todo> findByPersonId(Long personId);
 
-    List<Todo> findByTitleContainingIgnoreCase(String title);
+    // ✅ status lookups
+    List<Todo> findByCompleted(boolean completed);
 
+    // ✅ due date filters
     List<Todo> findByDueDateBetween(LocalDateTime start, LocalDateTime end);
-
     List<Todo> findByDueDateBeforeAndCompletedFalse(LocalDateTime dueDate);
-
+    List<Todo> findByCompletedFalseAndDueDateBefore(LocalDateTime dueDate);
     List<Todo> findByDueDateIsNull();
 
+    // ✅ person filters
     List<Todo> findByPersonIsNull();
-
-    List<Todo> findByCompletedFalseAndDueDateBefore(LocalDateTime dueDate);
-
     List<Todo> findByPersonIdAndCompletedTrue(Long personId);
 
+    // ✅ count
     long countByPersonId(Long personId);
 }
