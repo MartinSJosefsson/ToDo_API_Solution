@@ -12,14 +12,16 @@ public class Attachment {
 
     private String filename;
 
+    // 🔹 Path on disk where the file is stored
+    @Column(name = "file_path")
     private String filePath;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "todo_id")
     private Todo todo;
 
-    // --- Constructors ---
-    public Attachment() {}
+    public Attachment() {
+    }
 
     public Attachment(String filename, String filePath, Todo todo) {
         this.filename = filename;
@@ -27,12 +29,11 @@ public class Attachment {
         this.todo = todo;
     }
 
-    // --- Getters & Setters ---
+    // 🔹 Getters & Setters
     public Long getId() {
         return id;
     }
 
-    // ✅ Added setter so tests can use setId()
     public void setId(Long id) {
         this.id = id;
     }

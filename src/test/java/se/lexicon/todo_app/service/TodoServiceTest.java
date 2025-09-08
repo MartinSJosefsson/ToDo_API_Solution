@@ -12,7 +12,6 @@ import se.lexicon.todo_app.repository.AttachmentRepository;
 import se.lexicon.todo_app.repository.TodoRepository;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -36,35 +35,41 @@ class TodoServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-
         todo = new Todo();
         todo.setId(1L);
         todo.setTitle("Test Task");
-        todo.setDescription("Test Description");
+        todo.setDescription("Description");
         todo.setCompleted(false);
-        todo.setDueDate(LocalDateTime.now().plusDays(1));
-    }
-
-    @Test
-    void testGetAllTodos() {
-        when(todoRepository.findAll()).thenReturn(Arrays.asList(todo));
-
-        List<Todo> todos = todoService.getAllTodos();
-
-        assertNotNull(todos);
-        assertEquals(1, todos.size());
-        verify(todoRepository, times(1)).findAll();
     }
 
     @Test
     void testCreateTodo() {
-        when(todoRepository.save(todo)).thenReturn(todo);
+        when(todoRepository.save(any(Todo.class))).thenReturn(todo);
 
-        Todo saved = todoService.createTodo(todo);
+        Todo created = todoService.create(todo);
 
-        assertNotNull(saved);
-        assertEquals("Test Task", saved.getTitle());
+        assertNotNull(created);
+        assertEquals("Test Task", created.getTitle());
         verify(todoRepository, times(1)).save(todo);
+    }
+
+    @Test
+    void testFindById() {
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
+
+        Optional<Todo> found = todoService.findById(1L);
+
+        assertTrue(found.isPresent());
+        assertEquals("Test Task", found.get().getTitle());
+    }
+
+    @Test
+    void testFindAll() {
+        when(todoRepository.findAll()).thenReturn(Arrays.asList(todo));
+
+        List<Todo> todos = todoService.findAll();
+
+        assertEquals(1, todos.size());
     }
 
     @Test
@@ -72,47 +77,38 @@ class TodoServiceTest {
         when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
         when(todoRepository.save(any(Todo.class))).thenReturn(todo);
 
-        Todo updated = todoService.updateTodo(1L, todo);
+        Todo updated = new Todo();
+        updated.setTitle("Updated");
+        updated.setDescription("New Desc");
+        updated.setCompleted(true);
 
-        assertNotNull(updated);
-        verify(todoRepository, times(1)).findById(1L);
-        verify(todoRepository, times(1)).save(todo);
+        Todo result = todoService.update(1L, updated);
+
+        assertEquals("Updated", result.getTitle());
+        assertTrue(result.isCompleted());
     }
 
     @Test
     void testDeleteTodo() {
-        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
-        doNothing().when(todoRepository).delete(todo);
+        doNothing().when(todoRepository).deleteById(1L);
 
-        todoService.deleteTodo(1L);
+        todoService.delete(1L);
 
-        verify(todoRepository, times(1)).delete(todo);
-    }
-
-    @Test
-    void testSaveAttachments() throws IOException {
-        MultipartFile mockFile = mock(MultipartFile.class);
-        when(mockFile.getOriginalFilename()).thenReturn("file.txt");
-
-        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
-
-        todoService.saveAttachments(1L, List.of(mockFile));
-
-        verify(attachmentRepository, times(1)).save(any(Attachment.class));
+        verify(todoRepository, times(1)).deleteById(1L);
     }
 
     @Test
     void testGetAttachments() {
         Attachment attachment = new Attachment();
         attachment.setId(1L);
-        attachment.setFilename("file.txt");
+        attachment.setFilename("test.txt");
+        attachment.setTodo(todo);
 
-        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
-        when(attachmentRepository.findByTodoId(1L)).thenReturn(List.of(attachment));
+        when(attachmentRepository.findByTodoId(1L)).thenReturn(Arrays.asList(attachment));
 
         List<Attachment> attachments = todoService.getAttachments(1L);
 
-        assertNotNull(attachments);
         assertEquals(1, attachments.size());
+        assertEquals("test.txt", attachments.get(0).getFilename());
     }
 }

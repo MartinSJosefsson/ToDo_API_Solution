@@ -1,5 +1,6 @@
 package se.lexicon.todo_app.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import se.lexicon.todo_app.entity.Attachment;
@@ -7,9 +8,10 @@ import se.lexicon.todo_app.entity.Todo;
 import se.lexicon.todo_app.repository.AttachmentRepository;
 import se.lexicon.todo_app.repository.TodoRepository;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,65 +20,73 @@ public class TodoServiceImpl implements TodoService {
 
     private final TodoRepository todoRepository;
     private final AttachmentRepository attachmentRepository;
-    private final String uploadDir = "uploads";
+    private final String uploadDir = "uploads"; // local dir for file storage
 
-    public TodoServiceImpl(TodoRepository todoRepository,
-                           AttachmentRepository attachmentRepository) {
+    @Autowired
+    public TodoServiceImpl(TodoRepository todoRepository, AttachmentRepository attachmentRepository) {
         this.todoRepository = todoRepository;
         this.attachmentRepository = attachmentRepository;
 
-        // Ensure upload folder exists
-        try {
-            Files.createDirectories(Path.of(uploadDir));
-        } catch (IOException e) {
-            throw new RuntimeException("Could not create upload folder", e);
+        // ensure upload folder exists
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
     }
 
+    // --- CRUD ---
+
     @Override
-    public List<Todo> getAllTodos() {
+    public List<Todo> findAll() {
         return todoRepository.findAll();
     }
 
     @Override
-    public Todo createTodo(Todo todo) {
+    public Optional<Todo> findById(Long id) {
+        return todoRepository.findById(id);
+    }
+
+    @Override
+    public Todo create(Todo todo) {
         return todoRepository.save(todo);
     }
 
     @Override
-    public Todo updateTodo(Long id, Todo updatedTodo) {
-        return todoRepository.findById(id)
-                .map(todo -> {
-                    todo.setTitle(updatedTodo.getTitle());
-                    todo.setDescription(updatedTodo.getDescription());
-                    todo.setCompleted(updatedTodo.isCompleted());
-                    todo.setDueDate(updatedTodo.getDueDate());
-                    return todoRepository.save(todo);
-                })
-                .orElseThrow(() -> new RuntimeException("Todo not found with id " + id));
+    public Todo update(Long id, Todo updatedTodo) {
+        return todoRepository.findById(id).map(existing -> {
+            existing.setTitle(updatedTodo.getTitle());
+            existing.setDescription(updatedTodo.getDescription());
+            existing.setCompleted(updatedTodo.isCompleted());
+            existing.setDueDate(updatedTodo.getDueDate());
+            return todoRepository.save(existing);
+        }).orElseThrow(() -> new RuntimeException("Todo not found with id " + id));
     }
 
     @Override
-    public void deleteTodo(Long id) {
+    public void delete(Long id) {
         todoRepository.deleteById(id);
     }
 
+    // --- Attachments ---
+
     @Override
-    public void saveAttachments(Long todoId, List<MultipartFile> files) throws IOException {
+    public List<Attachment> saveAttachments(Long todoId, List<MultipartFile> files) throws IOException {
         Todo todo = todoRepository.findById(todoId)
                 .orElseThrow(() -> new RuntimeException("Todo not found with id " + todoId));
 
         for (MultipartFile file : files) {
-            String filePath = uploadDir + "/" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            Files.write(Path.of(filePath), file.getBytes());
+            String filePath = uploadDir + File.separator + file.getOriginalFilename();
+            Files.write(Paths.get(filePath), file.getBytes());
 
             Attachment attachment = new Attachment();
-            attachment.setTodo(todo);
             attachment.setFilename(file.getOriginalFilename());
             attachment.setFilePath(filePath);
+            attachment.setTodo(todo);
 
             attachmentRepository.save(attachment);
         }
+
+        return attachmentRepository.findByTodoId(todoId);
     }
 
     @Override
@@ -86,19 +96,18 @@ public class TodoServiceImpl implements TodoService {
 
     @Override
     public Attachment getAttachmentFile(Long todoId, Long attachmentId) {
-        Optional<Attachment> attachment = attachmentRepository.findById(attachmentId);
-        return attachment.orElseThrow(() -> new RuntimeException("Attachment not found"));
+        return attachmentRepository.findById(attachmentId)
+                .filter(a -> a.getTodo().getId().equals(todoId))
+                .orElseThrow(() -> new RuntimeException("Attachment not found"));
     }
 
     @Override
     public void deleteAttachment(Long todoId, Long attachmentId) {
-        Attachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new RuntimeException("Attachment not found with id " + attachmentId));
+        Attachment attachment = getAttachmentFile(todoId, attachmentId);
 
-        try {
-            Files.deleteIfExists(Path.of(attachment.getFilePath()));
-        } catch (IOException e) {
-            throw new RuntimeException("Could not delete file " + attachment.getFilePath(), e);
+        File file = new File(attachment.getFilePath());
+        if (file.exists()) {
+            file.delete();
         }
 
         attachmentRepository.delete(attachment);
