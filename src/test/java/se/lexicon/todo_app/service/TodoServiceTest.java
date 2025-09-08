@@ -2,196 +2,117 @@ package se.lexicon.todo_app.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import se.lexicon.todo_app.dto.TodoDto;
-import se.lexicon.todo_app.entity.Person;
+import org.mockito.MockitoAnnotations;
+import org.springframework.web.multipart.MultipartFile;
+import se.lexicon.todo_app.entity.Attachment;
 import se.lexicon.todo_app.entity.Todo;
+import se.lexicon.todo_app.repository.AttachmentRepository;
 import se.lexicon.todo_app.repository.TodoRepository;
-import se.lexicon.todo_app.repository.PersonRepository;
 
-import java.time.LocalDate;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-public class TodoServiceTest {
+class TodoServiceTest {
 
     @Mock
     private TodoRepository todoRepository;
 
     @Mock
-    private PersonRepository personRepository;
+    private AttachmentRepository attachmentRepository;
 
     @InjectMocks
     private TodoServiceImpl todoService;
 
     private Todo todo;
-    private TodoDto todoDto;
-    private Person person;
-    private final Long TEST_TODO_ID = 1L;
-    private final Long TEST_PERSON_ID = 1L;
-    private final String TEST_TITLE = "Test Todo";
-    private final String TEST_DESCRIPTION = "Test Description";
-    private final LocalDateTime TEST_DUE_DATE = LocalDateTime.now().plusDays(1);
 
     @BeforeEach
     void setUp() {
-        person = new Person(TEST_PERSON_ID, "John Doe", "john@example.com", LocalDate.now(), null);
-        todo = new Todo(TEST_TITLE, TEST_DESCRIPTION, false, TEST_DUE_DATE);
-        todo.setId(TEST_TODO_ID);
-        todo.setPerson(person);
+        MockitoAnnotations.openMocks(this);
 
-        todoDto = TodoDto.builder()
-                .id(TEST_TODO_ID)
-                .title(TEST_TITLE)
-                .description(TEST_DESCRIPTION)
-                .completed(false)
-                .dueDate(TEST_DUE_DATE)
-                .personId(TEST_PERSON_ID)
-                .build();
+        todo = new Todo();
+        todo.setId(1L);
+        todo.setTitle("Test Task");
+        todo.setDescription("Test Description");
+        todo.setCompleted(false);
+        todo.setDueDate(LocalDateTime.now().plusDays(1));
     }
 
     @Test
-    void testCreate() {
-        // Arrange
-        when(personRepository.findById(TEST_PERSON_ID)).thenReturn(Optional.of(person));
+    void testGetAllTodos() {
+        when(todoRepository.findAll()).thenReturn(Arrays.asList(todo));
+
+        List<Todo> todos = todoService.getAllTodos();
+
+        assertNotNull(todos);
+        assertEquals(1, todos.size());
+        verify(todoRepository, times(1)).findAll();
+    }
+
+    @Test
+    void testCreateTodo() {
+        when(todoRepository.save(todo)).thenReturn(todo);
+
+        Todo saved = todoService.createTodo(todo);
+
+        assertNotNull(saved);
+        assertEquals("Test Task", saved.getTitle());
+        verify(todoRepository, times(1)).save(todo);
+    }
+
+    @Test
+    void testUpdateTodo() {
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
         when(todoRepository.save(any(Todo.class))).thenReturn(todo);
 
-        // Act
-        TodoDto created = todoService.create(todoDto);
+        Todo updated = todoService.updateTodo(1L, todo);
 
-        // Assert
-        assertNotNull(created);
-        assertEquals(TEST_TITLE, created.title());
-        assertEquals(TEST_DESCRIPTION, created.description());
-        verify(todoRepository).save(any(Todo.class));
+        assertNotNull(updated);
+        verify(todoRepository, times(1)).findById(1L);
+        verify(todoRepository, times(1)).save(todo);
     }
 
     @Test
-    void testFindById() {
-        // Arrange
-        when(todoRepository.findById(TEST_TODO_ID)).thenReturn(Optional.of(todo));
+    void testDeleteTodo() {
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
+        doNothing().when(todoRepository).delete(todo);
 
-        // Act
-        TodoDto found = todoService.findById(TEST_TODO_ID);
+        todoService.deleteTodo(1L);
 
-        // Assert
-        assertNotNull(found);
-        assertEquals(TEST_TODO_ID, found.id());
-        assertEquals(TEST_TITLE, found.title());
-        verify(todoRepository).findById(TEST_TODO_ID);
+        verify(todoRepository, times(1)).delete(todo);
     }
 
     @Test
-    void testFindById_NotFound() {
-        // Arrange
-        when(todoRepository.findById(TEST_TODO_ID)).thenReturn(Optional.empty());
+    void testSaveAttachments() throws IOException {
+        MultipartFile mockFile = mock(MultipartFile.class);
+        when(mockFile.getOriginalFilename()).thenReturn("file.txt");
 
-        // Act & Assert
-        assertThrows(RuntimeException.class, () -> todoService.findById(TEST_TODO_ID));
-        verify(todoRepository).findById(TEST_TODO_ID);
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
+
+        todoService.saveAttachments(1L, List.of(mockFile));
+
+        verify(attachmentRepository, times(1)).save(any(Attachment.class));
     }
 
     @Test
-    void testFindAll() {
-        // Arrange
-        Todo todo2 = new Todo("Second Todo", "Second Description", false, TEST_DUE_DATE);
-        todo2.setId(2L);
-        when(todoRepository.findAll()).thenReturn(Arrays.asList(todo, todo2));
+    void testGetAttachments() {
+        Attachment attachment = new Attachment();
+        attachment.setId(1L);
+        attachment.setFilename("file.txt");
 
-        // Act
-        List<TodoDto> result = todoService.findAll();
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
+        when(attachmentRepository.findByTodoId(1L)).thenReturn(List.of(attachment));
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(2, result.size());
-        assertEquals(TEST_TITLE, result.get(0).title());
-        verify(todoRepository).findAll();
+        List<Attachment> attachments = todoService.getAttachments(1L);
+
+        assertNotNull(attachments);
+        assertEquals(1, attachments.size());
     }
-
-    @Test
-    void testUpdate() {
-        // Arrange
-        String updatedTitle = "Updated Todo";
-        String updatedDescription = "Updated Description";
-        TodoDto updateDto = TodoDto.builder()
-                .id(TEST_TODO_ID)
-                .title(updatedTitle)
-                .description(updatedDescription)
-                .completed(true)
-                .dueDate(TEST_DUE_DATE)
-                .personId(TEST_PERSON_ID)
-                .build();
-
-        Todo updatedTodo = new Todo(updatedTitle, updatedDescription, true, TEST_DUE_DATE);
-        updatedTodo.setId(TEST_TODO_ID);
-        updatedTodo.setPerson(person);
-
-        when(todoRepository.findById(TEST_TODO_ID)).thenReturn(Optional.of(todo));
-        when(personRepository.findById(TEST_PERSON_ID)).thenReturn(Optional.of(person));
-        when(todoRepository.save(any(Todo.class))).thenReturn(updatedTodo);
-
-        // Act
-        TodoDto result = todoService.update(TEST_TODO_ID, updateDto);
-
-        // Assert
-        assertNotNull(result);
-        assertEquals(updatedTitle, result.title());
-        assertEquals(updatedDescription, result.description());
-        assertTrue(result.completed());
-        assertEquals(TEST_PERSON_ID, result.personId());
-        verify(todoRepository).findById(TEST_TODO_ID);
-        verify(personRepository).findById(TEST_PERSON_ID);
-        verify(todoRepository).save(any(Todo.class));
-    }
-
-    @Test
-    void testDelete() {
-        // Act
-        todoService.delete(TEST_TODO_ID);
-
-        // Assert
-        verify(todoRepository).deleteById(TEST_TODO_ID);
-    }
-
-    @Test
-    void testFindByPersonId() {
-        // Arrange
-        when(todoRepository.findByPerson_Id(TEST_PERSON_ID)).thenReturn(List.of(todo));
-
-        // Act
-        List<TodoDto> result = todoService.findByPersonId(TEST_PERSON_ID);
-
-        // Assert
-        assertNotNull(result);
-        assertFalse(result.isEmpty());
-        assertEquals(TEST_TITLE, result.get(0).title());
-        verify(todoRepository).findByPerson_Id(TEST_PERSON_ID);
-    }
-
-    @Test
-    void testFindByCompleted() {
-        // Arrange
-        when(todoRepository.findByCompleted(false)).thenReturn(List.of(todo));
-
-        // Act
-        List<TodoDto> result = todoService.findByCompleted(false);
-
-        // Assert
-        assertNotNull(result);
-        assertFalse(result.isEmpty());
-        assertFalse(result.get(0).completed());
-        verify(todoRepository).findByCompleted(false);
-    }
-
-
 }

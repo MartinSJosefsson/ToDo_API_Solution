@@ -1,30 +1,29 @@
 package se.lexicon.todo_app.service;
 
 import org.springframework.web.multipart.MultipartFile;
-import se.lexicon.todo_app.dto.TodoDto;
+import se.lexicon.todo_app.entity.Attachment;
+import se.lexicon.todo_app.entity.Todo;
 
+import java.io.IOException;
 import java.util.List;
 
 public interface TodoService {
 
-    TodoDto create(TodoDto dto);
+    // --- Basic CRUD ---
+    List<Todo> getAllTodos();
 
-    TodoDto findById(Long id);
+    Todo createTodo(Todo todo);
 
-    List<TodoDto> findAll();
+    Todo updateTodo(Long id, Todo updatedTodo);
 
-    TodoDto update(Long id, TodoDto dto);
+    void deleteTodo(Long id);
 
-    void delete(Long id);
+    // --- Attachments ---
+    void saveAttachments(Long todoId, List<MultipartFile> files) throws IOException;
 
-    List<TodoDto> findByPersonId(Long personId);
+    List<Attachment> getAttachments(Long todoId);
 
-    List<TodoDto> findByCompleted(boolean completed);
+    Attachment getAttachmentFile(Long todoId, Long attachmentId);
 
-    // ✅ new methods for attachments
-    void saveAttachments(Long todoId, List<MultipartFile> files);
-
-    List<String> getAttachments(Long todoId);
-
-    byte[] getAttachmentFile(Long todoId, Long attachmentId);
+    void deleteAttachment(Long todoId, Long attachmentId);
 }
