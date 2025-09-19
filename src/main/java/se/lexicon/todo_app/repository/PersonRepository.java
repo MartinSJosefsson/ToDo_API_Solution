@@ -9,7 +9,8 @@ import java.util.Optional;
 @Repository
 public interface PersonRepository extends JpaRepository<Person, Long> {
 
-    Optional<Person> findByEmail(String email);
+    // Custom query method to fetch Person by related User’s username
     Optional<Person> findByUserUsername(String username);
-    boolean existsByEmail(String email);
+
+    boolean existsByUserUsername(String username);
 }

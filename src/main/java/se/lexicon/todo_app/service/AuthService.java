@@ -1,11 +1,10 @@
 package se.lexicon.todo_app.service;
 
-import se.lexicon.todo_app.dto.AuthRequestDto;
-import se.lexicon.todo_app.dto.AuthResponseDto;
+import org.springframework.security.core.Authentication;
+import se.lexicon.todo_app.dto.JwtResponse;
+import se.lexicon.todo_app.dto.SignupRequest;
 
 public interface AuthService {
-
-    AuthResponseDto login(AuthRequestDto request);
-
-    void logout(String authHeader);
+    JwtResponse generateJwtResponse(Authentication authentication);
+    JwtResponse registerUser(SignupRequest signupRequest);
 }

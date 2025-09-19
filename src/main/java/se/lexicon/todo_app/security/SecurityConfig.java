@@ -17,16 +17,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.CorsFilter;
+import se.lexicon.todo_app.service.UserDetailsImpl; // ✅ import from service
 
-/**
- * SecurityConfig is the main configuration class for Spring Security in the To-Do application.
- * It sets up the security filter chain, configures HTTP security, and defines the authentication manager.
- * It also registers the JwtRequestFilter to intercept requests and validate JWT tokens.
- * This configuration allows for stateless session management, meaning that the server does not store any session information.
- * It also enables method-level security annotations such as @Secured, @PreAuthorize, and @PostAuthorize.
- * It allows public access to authentication endpoints and Swagger UI, while securing all other endpoints.
- * It uses BCrypt for password encoding to enhance security.
- */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(
@@ -34,9 +26,7 @@ import org.springframework.web.filter.CorsFilter;
         jsr250Enabled = true,
         prePostEnabled = true
 )
-
 public class SecurityConfig {
-
 
     private final JwtRequestFilter jwtRequestFilter;
     private final CorsFilter corsFilter;
@@ -47,25 +37,20 @@ public class SecurityConfig {
         this.corsFilter = corsFilter;
     }
 
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                // Configure URL-based security rules
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()           // Allow public access to auth endpoints
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll() // Allow access to API documentation
-                        .anyRequest().authenticated()                          // Require authentication for all other requests
+                        .requestMatchers("/api/auth/**").permitAll()           // allow login/signup
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll() // docs
+                        .anyRequest().authenticated()                          // everything else requires login
                 )
-                // Configure session management
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Don't create sessions - use JWT instead
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // JWT only
                 )
-
-                // Add security filters in specific order
-                .addFilterBefore(corsFilter, UsernamePasswordAuthenticationFilter.class)         // Process CORS before authentication
-                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);  // Process JWT before authentication
+                .addFilterBefore(corsFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -79,10 +64,12 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
+
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         provider.setHideUserNotFoundExceptions(true);
+
         return new ProviderManager(provider);
     }
 }

@@ -1,27 +1,30 @@
 package se.lexicon.todo_app.repository;
 
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
-import se.lexicon.todo_app.entity.Role;
+import org.springframework.stereotype.Repository;
 import se.lexicon.todo_app.entity.User;
 
-import java.util.List;
 import java.util.Optional;
 
-public interface UserRepository extends CrudRepository<User, Integer> {
+@Repository
+public interface UserRepository extends JpaRepository<User, String> {
+
+    // Find user by username
     Optional<User> findByUsername(String username);
 
-    Boolean existsByUsername(String username);
+    // Check if a user exists by username
+    boolean existsByUsername(String username);
 
-    List<User> findByRolesContaining(Role role);
-
+    // Update password by username
     @Modifying
-    @Query("update User u set u.expired = :status where u.username = :username")
-    void updateExpiredByUsername(@Param("username") String username, @Param("status") boolean status);
+    @Query("UPDATE User u SET u.password = :password WHERE u.username = :username")
+    void updatePasswordByUsername(@Param("username") String username, @Param("password") String password);
 
+    // Update expired flag by username
     @Modifying
-    @Query("update User u set u.password = :pwd where u.username = :username")
-    void updatePasswordByUsername(@Param("username") String username, @Param("pwd") String newPassword);
+    @Query("UPDATE User u SET u.expired = :expired WHERE u.username = :username")
+    void updateExpiredByUsername(@Param("username") String username, @Param("expired") boolean expired);
 }

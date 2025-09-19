@@ -1,44 +1,31 @@
 package se.lexicon.todo_app.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
 @Entity
 @Table(name = "persons")
-@Data // Generates getters, setters, toString, equals, hashCode
-@NoArgsConstructor // No-args constructor
-@AllArgsConstructor // All-args constructor
 public class Person {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
-    private String name;
-
-    @Column(nullable = false, unique = true, length = 150)
+    private String firstName;
+    private String lastName;
     private String email;
 
-    private LocalDate createdAt;
-
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "user_id")
+    @OneToOne
+    @JoinColumn(name = "username", referencedColumnName = "username")
     private User user;
 
-    public Person(String name, String email) {
-        this.name = name;
+    public Person(String firstName, String lastName, String email, User user) {
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.email = email;
+        this.user = user;
     }
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDate.now();
-    }
-
 }
