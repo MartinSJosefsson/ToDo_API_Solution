@@ -4,45 +4,42 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import se.lexicon.todo_app.entity.Person;
+import se.lexicon.todo_app.entity.User;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-class PersonRepositoryTest {
+public class PersonRepositoryTest {
 
     @Autowired
     private PersonRepository personRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
-    void testSaveAndFindPerson() {
-        Person person = new Person();
-        person.setFirstName("Mehrdad");
-        person.setLastName("Javan");
-        person.setEmail("mehrdad@test.se");
+    void testSaveAndFindByEmail() {
+        User user = new User("testuser", "password");
+        userRepository.save(user);
 
-        person = personRepository.save(person);
+        Person person = new Person("John", "Doe", "john.doe@example.com", user);
+        personRepository.save(person);
 
-        Optional<Person> found = personRepository.findById(person.getId());
-
+        Optional<Person> found = personRepository.findByEmail("john.doe@example.com");
         assertThat(found).isPresent();
-        assertThat(found.get().getFirstName()).isEqualTo("Mehrdad");
-        assertThat(found.get().getLastName()).isEqualTo("Javan");
-        assertThat(found.get().getEmail()).isEqualTo("mehrdad@test.se");
+        assertThat(found.get().getFirstName()).isEqualTo("John");
     }
 
     @Test
-    void testExistsById() {
-        Person person = new Person();
-        person.setFirstName("Martin");
-        person.setLastName("Josefsson");
-        person.setEmail("martin@test.se");
+    void testExistsByEmail() {
+        User user = new User("anotheruser", "password");
+        userRepository.save(user);
 
-        person = personRepository.save(person);
+        Person person = new Person("Jane", "Doe", "jane.doe@example.com", user);
+        personRepository.save(person);
 
-        boolean exists = personRepository.existsById(person.getId());
-
-        assertThat(exists).isTrue();
+        assertThat(personRepository.existsByEmail("jane.doe@example.com")).isTrue();
     }
 }

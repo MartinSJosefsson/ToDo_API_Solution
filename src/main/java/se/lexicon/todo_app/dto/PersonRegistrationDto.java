@@ -3,5 +3,6 @@ package se.lexicon.todo_app.dto;
 public record PersonRegistrationDto(
         String firstName,
         String lastName,
-        String email
+        String email,
+        String username
 ) {}

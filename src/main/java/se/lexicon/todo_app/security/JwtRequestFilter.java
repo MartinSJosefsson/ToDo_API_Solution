@@ -10,64 +10,48 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import se.lexicon.todo_app.service.UserDetailsImpl;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import se.lexicon.todo_app.service.UserDetailsServiceImpl;
 
 import java.io.IOException;
 
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
 
-    private final UserDetailsService userDetailsService;
     private final JwtTokenUtil jwtTokenUtil;
-    private final TokenBlacklistStorage tokenBlacklistStorage;
+    private final UserDetailsServiceImpl userDetailsService;
 
-    public JwtRequestFilter(UserDetailsService userDetailsService,
-                            JwtTokenUtil jwtTokenUtil,
-                            TokenBlacklistStorage tokenBlacklistStorage) {
-        this.userDetailsService = userDetailsService;
+    public JwtRequestFilter(JwtTokenUtil jwtTokenUtil, UserDetailsServiceImpl userDetailsService) {
         this.jwtTokenUtil = jwtTokenUtil;
-        this.tokenBlacklistStorage = tokenBlacklistStorage;
+        this.userDetailsService = userDetailsService;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        final String authorizationHeader = request.getHeader("Authorization");
+        final String header = request.getHeader("Authorization");
+        String jwt = null;
+        String username = null;
 
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            chain.doFilter(request, response);
-            return;
+        if (header != null && header.startsWith("Bearer ")) {
+            jwt = header.substring(7);
+            try {
+                username = jwtTokenUtil.getUsernameFromToken(jwt);
+            } catch (Exception e) {
+                // invalid token
+            }
         }
 
-        String jwt = authorizationHeader.substring(7);
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            org.springframework.security.core.userdetails.UserDetails userDetails =
+                    userDetailsService.loadUserByUsername(username);
 
-        try {
-            if (tokenBlacklistStorage.isBlacklisted(jwt)) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token has been revoked");
-                return;
+            if (userDetails instanceof UserDetailsImpl && jwtTokenUtil.validateToken(jwt, (UserDetailsImpl) userDetails)) {
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
-
-            String username = jwtTokenUtil.getUsernameFromToken(jwt);
-
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // ✅ Explicit cast to your custom UserDetailsImpl
-                UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(username);
-
-                if (jwtTokenUtil.validateToken(jwt, userDetails)) {
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                } else {
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token version");
-                    return;
-                }
-            }
-        } catch (Exception e) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
-            return;
         }
 
         chain.doFilter(request, response);

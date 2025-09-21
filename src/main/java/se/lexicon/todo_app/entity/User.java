@@ -8,7 +8,8 @@ import java.util.Set;
 
 @AllArgsConstructor
 @NoArgsConstructor
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "users")
 public class User {
@@ -30,9 +31,8 @@ public class User {
 
     private boolean expired;
 
-    @OneToOne(mappedBy = "user")
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private Person person;
-
 
     public User(String username, String password) {
         this.username = username;

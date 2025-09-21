@@ -10,6 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/persons")
+@CrossOrigin(origins = "*", maxAge = 3600)
 public class PersonController {
 
     private final PersonService personService;
@@ -25,7 +26,9 @@ public class PersonController {
 
     @GetMapping("/{id}")
     public ResponseEntity<PersonDto> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(personService.findById(id));
+        return personService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
