@@ -7,6 +7,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
 import se.lexicon.todo_app.dto.JwtResponse;
 import se.lexicon.todo_app.dto.LoginRequest;
 import se.lexicon.todo_app.dto.SignupRequest;
@@ -14,7 +15,7 @@ import se.lexicon.todo_app.service.AuthService;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "*", maxAge = 3600)
+@CrossOrigin(origins = "*", maxAge = 3600) // allow frontend calls
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -28,8 +29,16 @@ public class AuthController {
 
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
+        // Debug incoming login request
+        System.out.println("📥 Received login request:");
+        System.out.println("   username = " + loginRequest.getUsername());
+        System.out.println("   password = " + loginRequest.getPassword());
+
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
+                new UsernamePasswordAuthenticationToken(
+                        loginRequest.getUsername(),
+                        loginRequest.getPassword()
+                )
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
